@@ -1,0 +1,32 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "go generate",
+            "type": "shell",
+            "command": "go generate ./...",
+            "group": "build"
+        },
+        {
+            "label": "go install",
+            "type": "shell",
+            "dependsOn": "go generate",
+            "command": "go install ./...",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }  
+        },
+        {
+            "label": "go test",
+            "type": "shell",
+            "command": "go test -v ./...",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        }
+    ]
+}
