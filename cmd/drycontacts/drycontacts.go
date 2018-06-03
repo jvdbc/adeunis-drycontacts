@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 )
 
@@ -33,7 +35,7 @@ const (
 // UplinkStatus is the byte to reflect current device state
 type UplinkStatus byte
 
-// FrameCounter value from 3 bits (5-6-7)
+// FrameCounter value from 3 bits (5-6-7) (from 0 value to 7 and restart)
 func (us UplinkStatus) FrameCounter() uint8 {
 	fc := us >> 5
 	return uint8(fc)
@@ -41,7 +43,7 @@ func (us UplinkStatus) FrameCounter() uint8 {
 
 // CmdOutputDone value from 1 bit (3)
 func (us UplinkStatus) CmdOutputDone() bool {
-	var mask UplinkStatus = 0x08 // 0000 1000
+	var mask UplinkStatus = 0x08 //0000 1000
 	return ((us & mask) >> 3) > 0
 }
 
@@ -95,6 +97,22 @@ type ResponseFrame struct {
 // DataFrame type
 type DataFrame struct {
 	*Header
+
+	Tor1         uint16
+	Tor1State    bool
+	Tor1Previous bool
+
+	Tor2         uint16
+	Tor2State    bool
+	Tor2Previous bool
+
+	Tor3         uint16
+	Tor3State    bool
+	Tor3Previous bool
+
+	Tor4         uint16
+	Tor4State    bool
+	Tor4Previous bool
 }
 
 // UplinkFrame interface
@@ -102,28 +120,95 @@ type UplinkFrame interface {
 }
 
 // parseDevice func
-func parseDevice(payload []byte) (UplinkFrame, error) {
-	return nil, fmt.Errorf("Not Implemented")
+func parseDevice(payload []byte) (DeviceFrame, error) {
+	return DeviceFrame{}, fmt.Errorf("Not Implemented")
 }
 
 // parseNetwork func
-func parseNetwork(payload []byte) (UplinkFrame, error) {
-	return nil, fmt.Errorf("Not Implemented")
+func parseNetwork(payload []byte) (NetworkFrame, error) {
+	return NetworkFrame{}, fmt.Errorf("Not Implemented")
 }
 
 // parseKeepalive func
-func parseKeepalive(payload []byte) (UplinkFrame, error) {
-	return nil, fmt.Errorf("Not Implemented")
+func parseKeepalive(payload []byte) (KeepaliveFrame, error) {
+	return KeepaliveFrame{}, fmt.Errorf("Not Implemented")
 }
 
 // parseResponse func
-func parseResponse(payload []byte) (UplinkFrame, error) {
-	return nil, fmt.Errorf("Not Implemented")
+func parseResponse(payload []byte) (ResponseFrame, error) {
+	return ResponseFrame{}, fmt.Errorf("Not Implemented")
 }
 
 // parseData func
-func parseData(payload []byte) (UplinkFrame, error) {
-	return nil, fmt.Errorf("Not Implemented")
+func parseData(payload []byte) (DataFrame, error) {
+	frame := DataFrame{}
+
+	if err := byteToUint16(payload[2:4], &frame.Tor1); err != nil {
+		return frame, err
+	}
+
+	if err := byteToUint16(payload[4:6], &frame.Tor2); err != nil {
+		return frame, err
+	}
+
+	if err := byteToUint16(payload[6:8], &frame.Tor3); err != nil {
+		return frame, err
+	}
+
+	if err := byteToUint16(payload[8:10], &frame.Tor4); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 0, &frame.Tor1State); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 1, &frame.Tor1Previous); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 2, &frame.Tor2State); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 3, &frame.Tor2Previous); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 4, &frame.Tor3State); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 5, &frame.Tor3Previous); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 6, &frame.Tor4State); err != nil {
+		return frame, err
+	}
+
+	if err := oneOrZero(payload[10], 7, &frame.Tor4Previous); err != nil {
+		return frame, err
+	}
+
+	return frame, nil
+}
+
+func byteToUint16(slice []byte, result *uint16) error {
+	err := binary.Read(bytes.NewReader(slice), binary.BigEndian, result)
+	return err
+}
+
+func oneOrZero(value byte, bPos uint8, result *bool) error {
+	if bPos > 7 {
+		return fmt.Errorf("bit position should be between 0 and 8")
+	}
+
+	mask := byte(1 << bPos) // = 2 ^ bPosr (get mask)
+
+	*result = ((value & mask) >> bPos) > 0
+
+	return nil
 }
 
 // Parse func
