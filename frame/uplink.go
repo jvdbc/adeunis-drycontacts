@@ -66,8 +66,16 @@ type Payload []byte
 
 // Header 11 bytes for 4 tor data
 type Header struct {
-	Code   UplinkCode
-	Status UplinkStatus
+	code   UplinkCode
+	status UplinkStatus
+}
+
+func (h Header) Code() UplinkCode {
+	return h.code
+}
+
+func (h Header) Status() UplinkStatus {
+	return h.status
 }
 
 // DeviceFrame type
@@ -113,7 +121,8 @@ type DataFrame struct {
 
 // UplinkFrame interface
 type UplinkFrame interface {
-	Header() Header
+	Code() UplinkCode
+	Status() UplinkStatus
 }
 
 // Parse func
@@ -122,19 +131,19 @@ func (p Payload) Parse() (UplinkFrame, error) {
 		return nil, fmt.Errorf("Payload should have a size of 11 bytes")
 	}
 	code := UplinkCode(p[0])
-	header := &Header{Code: code, Status: UplinkStatus(p[1])}
+	header := &Header{code: code, status: UplinkStatus(p[1])}
 
 	switch UplinkCode(code) {
 	case Device:
-		return parseDevice(header, p[3:])
+		return parseDevice(header, p[2:])
 	case Network:
-		return parseNetwork(header, p[3:])
+		return parseNetwork(header, p[2:])
 	case Keepalive:
-		return parseKeepalive(header, p[3:])
+		return parseKeepalive(header, p[2:])
 	case Response:
-		return parseResponse(header, p[3:])
+		return parseResponse(header, p[2:])
 	case Data:
-		return parseData(header, p[3:])
+		return parseData(header, p[2:])
 	default:
 		return nil, fmt.Errorf("Unknown code byte")
 	}
