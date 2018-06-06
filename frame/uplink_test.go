@@ -125,7 +125,13 @@ func TestPayload_Parse(t *testing.T) {
 		want    UplinkFrame
 		wantErr bool
 	}{
-		{"1", Payload([]byte{}), nil, true},
+		{
+			"1",
+			Payload([]byte{0x40, 0xAB, 0x00, 0xF1, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x9C}),
+			DataFrame{Header: &Header{code: 0x40, status: 0xAB}, Tor1: 241, Tor2: 2, Tor3: 1, Tor4: 0,
+				Tor1State: false, Tor1Previous: false, Tor2State: true, Tor2Previous: true, Tor3State: true, Tor3Previous: false, Tor4State: false, Tor4Previous: true},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

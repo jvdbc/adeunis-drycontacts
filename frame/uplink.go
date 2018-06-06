@@ -70,10 +70,12 @@ type Header struct {
 	status UplinkStatus
 }
 
+// Code get header code
 func (h Header) Code() UplinkCode {
 	return h.code
 }
 
+// Status get header status
 func (h Header) Status() UplinkStatus {
 	return h.status
 }
