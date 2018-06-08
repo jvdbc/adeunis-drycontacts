@@ -27,6 +27,15 @@
                 "kind": "test",
                 "isDefault": true
             }
+        },
+        {
+            "label": "go aws zip",
+            "type": "shell",
+            "command": "zip_aws.bat",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
         }
     ]
 }

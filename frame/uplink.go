@@ -130,7 +130,7 @@ type UplinkFrame interface {
 // Parse func
 func (p Payload) Parse() (UplinkFrame, error) {
 	if len(p) != 11 {
-		return nil, fmt.Errorf("Payload should have a size of 11 bytes")
+		return nil, fmt.Errorf("Payload should have a size of 11 bytes, %s", p)
 	}
 	code := UplinkCode(p[0])
 	header := &Header{code: code, status: UplinkStatus(p[1])}
