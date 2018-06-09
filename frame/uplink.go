@@ -12,16 +12,12 @@ type UplinkCode byte
 const (
 	// Device config frame
 	Device UplinkCode = 0x10
-
 	// Network config frame
 	Network UplinkCode = 0x20
-
 	// Keepalive is a life frame
 	Keepalive UplinkCode = 0x30
-
 	// Response frame to a request or a config
 	Response UplinkCode = 0x31
-
 	// Data frame
 	Data UplinkCode = 0x40
 )
@@ -130,7 +126,7 @@ type UplinkFrame interface {
 // Parse func
 func (p Payload) Parse() (UplinkFrame, error) {
 	if len(p) != 11 {
-		return nil, fmt.Errorf("Payload should have a size of 11 bytes, %s", p)
+		return nil, fmt.Errorf("payload should have a size of 11 bytes, %s", p)
 	}
 	code := UplinkCode(p[0])
 	header := &Header{code: code, status: UplinkStatus(p[1])}
@@ -147,28 +143,28 @@ func (p Payload) Parse() (UplinkFrame, error) {
 	case Data:
 		return parseData(header, p[2:])
 	default:
-		return nil, fmt.Errorf("Unknown code byte")
+		return nil, fmt.Errorf("unknown code byte")
 	}
 }
 
 // parseDevice func
 func parseDevice(header *Header, payload []byte) (DeviceFrame, error) {
-	return DeviceFrame{}, fmt.Errorf("Not Implemented")
+	return DeviceFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseNetwork func
 func parseNetwork(header *Header, payload []byte) (NetworkFrame, error) {
-	return NetworkFrame{}, fmt.Errorf("Not Implemented")
+	return NetworkFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseKeepalive func
 func parseKeepalive(header *Header, payload []byte) (KeepaliveFrame, error) {
-	return KeepaliveFrame{}, fmt.Errorf("Not Implemented")
+	return KeepaliveFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseResponse func
 func parseResponse(header *Header, payload []byte) (ResponseFrame, error) {
-	return ResponseFrame{}, fmt.Errorf("Not Implemented")
+	return ResponseFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseData func

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,8 +16,8 @@ import (
 	"github.com/jvdbc/adeunis-drycontacts/frame"
 )
 
-// SigfoxEvent type
-type SigfoxEvent struct {
+// sigfoxJSON type
+type sigfoxJSON struct {
 	Name      string `json:"name"`
 	Time      string `json:"time"`
 	Device    string `json:"device"`
@@ -31,55 +32,73 @@ type SigfoxEvent struct {
 	SeqNumber string `json:"seqNumber"`
 }
 
-// IPTor type
-type IPTor struct {
+// iPTor type
+type iPTor struct {
 	ID      uint8  `json:"id"`
 	Label   string `json:"label"`
 	Enabled bool   `json:"enabled"`
 	State   bool   `json:"state"`
 }
 
-// IPTorEvent type
-type IPTorEvent struct {
+// iPTorJSON type
+type iPTorJSON struct {
 	ID        string  `json:"id"`
 	Timestamp string  `json:"timestamp"`
-	Values    []IPTor `json:"values"`
+	Values    []iPTor `json:"values"`
 }
 
-func init() {
+type httpPoster interface {
+	Post(url string, contentType string, body io.Reader) (resp *http.Response, err error)
 }
+
+type httpPost struct {
+}
+
+func (d httpPost) Post(url string, contentType string, body io.Reader) (resp *http.Response, err error) {
+	return http.Post(url, contentType, body)
+}
+
+var clt httpPoster
 
 // HandleRequest start point
-func HandleRequest(ctx context.Context, sigfox SigfoxEvent) (string, error) {
-	log.Printf("Received event: %v\n", sigfox)
+func HandleRequest(ctx context.Context, sigfox sigfoxJSON) (string, error) {
 
-	payload, err := hex.DecodeString(sigfox.Data)
+	log.Printf("received event: %v", sigfox)
 
+	data, err := hex.DecodeString(sigfox.Data)
 	if err != nil {
-		return "", fmt.Errorf("hex decode fail: %v", err)
+		return "", fmt.Errorf("hex decode failed: %v", err)
 	}
 
-	uf, err := frame.Payload(payload).Parse()
-
+	uf, err := frame.Payload(data).Parse()
 	if err != nil {
-		return "", fmt.Errorf("iptor parse error: %v", err)
+		return "", fmt.Errorf("frame parse failed: %v", err)
 	}
 
 	var df frame.DataFrame
-
-	switch uf.Code() {
-	case frame.Data:
-		df = uf.(frame.DataFrame)
+	switch x := uf.(type) {
+	case frame.DataFrame:
+		df = x
 	default:
-		return "", fmt.Errorf("iptor frame not implemented: %s", uf.Code())
+		return "", fmt.Errorf("%t frame not implemented", x)
 	}
 
-	content := IPTorEvent{sigfox.Device, sigfox.Time, []IPTor{
-		IPTor{1, "alerte", true, df.Tor1State},
-		IPTor{2, "alerte", true, df.Tor2State},
-		IPTor{3, "alerte", true, df.Tor3State},
-		IPTor{4, "alerte", true, df.Tor4State},
-	}}
+	content := iPTorJSON{
+		sigfox.Device,
+		sigfox.Time,
+		[]iPTor{
+			iPTor{1, "alerte", true, df.Tor1State},
+			iPTor{2, "alerte", true, df.Tor2State},
+			iPTor{3, "alerte", true, df.Tor3State},
+			iPTor{4, "alerte", true, df.Tor4State},
+		}}
+
+	body, err := json.Marshal(content)
+	if err != nil {
+		return "", fmt.Errorf("json marshal failed: %v", err)
+	}
+
+	log.Printf("json send: %+v", content)
 
 	host := os.Getenv("scCallbackHost") // 'connector-demoenv.devinno.fr'
 	path := os.Getenv("scCallbackPath") // /ip/tor/data
@@ -87,29 +106,30 @@ func HandleRequest(ctx context.Context, sigfox SigfoxEvent) (string, error) {
 	url := fmt.Sprintf("https://%v%v", host, path)
 	log.Printf("call url: %v", url)
 
-	if err != nil {
-		return "", fmt.Errorf("json marshal error: %v", err)
+	if ctx != nil {
+		if tst, ok := ctx.Value("test").(httpPoster); ok {
+			clt = tst
+		}
 	}
 
-	log.Printf("json send: %+v", content)
+	if clt == nil {
+		clt = httpPost{}
+	}
 
-	body, err := json.Marshal(content)
-
-	res, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	res, err := clt.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		return "", fmt.Errorf("post response error: %v", err)
+		return "", fmt.Errorf("post response failed: %v", err)
 	}
 
 	defer res.Body.Close()
 	rspBody, err := ioutil.ReadAll(res.Body)
-
 	if err != nil {
-		return "", fmt.Errorf("body response error: %v", err)
+		return "", fmt.Errorf("read body response failed: %v", err)
 	}
 
-	log.Printf("Response: %v", string(rspBody))
+	log.Printf("response: %v", string(rspBody))
 
-	return fmt.Sprintf("Done !"), nil
+	return fmt.Sprintf("lambda success"), nil
 }
 
 func main() {

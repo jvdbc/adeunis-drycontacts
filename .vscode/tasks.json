@@ -7,7 +7,8 @@
             "label": "go generate",
             "type": "shell",
             "command": "go generate ./...",
-            "group": "build"
+            "group": "build",
+            "problemMatcher":"$go"
         },
         {
             "label": "go install",
@@ -17,7 +18,8 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }  
+            },
+            "problemMatcher":"$go"
         },
         {
             "label": "go test",
@@ -26,16 +28,15 @@
             "group": {
                 "kind": "test",
                 "isDefault": true
-            }
+            },
+            "problemMatcher":"$go"
         },
         {
             "label": "go aws zip",
             "type": "shell",
             "command": "zip_aws.bat",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            }
+            "group": "build",
+            "problemMatcher":[]
         }
     ]
 }
