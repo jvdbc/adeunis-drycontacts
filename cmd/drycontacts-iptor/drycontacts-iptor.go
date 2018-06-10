@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -47,32 +46,31 @@ type iPTorJSON struct {
 	Values    []iPTor `json:"values"`
 }
 
-type httpPoster interface {
-	Post(url string, contentType string, body io.Reader) (resp *http.Response, err error)
+func mustEnv(key string) (string, error) {
+	var value string
+	if value = os.Getenv(key); value == "" {
+		return "", fmt.Errorf("%s is not define in env", key)
+	}
+	return value, nil
 }
 
-type httpPost struct {
-}
-
-func (d httpPost) Post(url string, contentType string, body io.Reader) (resp *http.Response, err error) {
-	return http.Post(url, contentType, body)
-}
-
-var clt httpPoster
+var callbackHost = "scCallbackHost"
+var callbackPath = "scCallbackPath"
 
 // HandleRequest start point
 func HandleRequest(ctx context.Context, sigfox sigfoxJSON) (string, error) {
 
 	log.Printf("received event: %v", sigfox)
-
+	mustEnv(callbackHost)
+	mustEnv(callbackPath)
 	data, err := hex.DecodeString(sigfox.Data)
 	if err != nil {
-		return "", fmt.Errorf("hex decode failed: %v", err)
+		return "", fmt.Errorf("decode hex failed: %v", err)
 	}
 
 	uf, err := frame.Payload(data).Parse()
 	if err != nil {
-		return "", fmt.Errorf("frame parse failed: %v", err)
+		return "", fmt.Errorf("parse frame failed: %v", err)
 	}
 
 	var df frame.DataFrame
@@ -83,7 +81,7 @@ func HandleRequest(ctx context.Context, sigfox sigfoxJSON) (string, error) {
 		return "", fmt.Errorf("%t frame not implemented", x)
 	}
 
-	content := iPTorJSON{
+	iptorJSON := iPTorJSON{
 		sigfox.Device,
 		sigfox.Time,
 		[]iPTor{
@@ -93,35 +91,26 @@ func HandleRequest(ctx context.Context, sigfox sigfoxJSON) (string, error) {
 			iPTor{4, "alerte", true, df.Tor4State},
 		}}
 
-	body, err := json.Marshal(content)
+	log.Printf("json to send: %+v", iptorJSON)
+
+	content, err := json.Marshal(iptorJSON)
 	if err != nil {
-		return "", fmt.Errorf("json marshal failed: %v", err)
+		return "", fmt.Errorf("marshal json failed: %v", err)
 	}
 
-	log.Printf("json send: %+v", content)
-
-	host := os.Getenv("scCallbackHost") // 'connector-demoenv.devinno.fr'
-	path := os.Getenv("scCallbackPath") // /ip/tor/data
+	host := os.Getenv(callbackHost) // 'connector-demoenv.devinno.fr'
+	path := os.Getenv(callbackPath) // /ip/tor/data
 
 	url := fmt.Sprintf("https://%v%v", host, path)
 	log.Printf("call url: %v", url)
 
-	if ctx != nil {
-		if tst, ok := ctx.Value("test").(httpPoster); ok {
-			clt = tst
-		}
-	}
-
-	if clt == nil {
-		clt = httpPost{}
-	}
-
-	res, err := clt.Post(url, "application/json", bytes.NewBuffer(body))
+	res, err := http.Post(url, "application/json", bytes.NewBuffer(content))
 	if err != nil {
-		return "", fmt.Errorf("post response failed: %v", err)
+		return "", fmt.Errorf("post failed: %v", err)
 	}
 
 	defer res.Body.Close()
+
 	rspBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return "", fmt.Errorf("read body response failed: %v", err)

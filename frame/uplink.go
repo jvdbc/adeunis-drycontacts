@@ -78,27 +78,27 @@ func (h Header) Status() UplinkStatus {
 
 // DeviceFrame type
 type DeviceFrame struct {
-	*Header
+	Header
 }
 
 // NetworkFrame type
 type NetworkFrame struct {
-	*Header
+	Header
 }
 
 // KeepaliveFrame type
 type KeepaliveFrame struct {
-	*Header
+	Header
 }
 
 // ResponseFrame type
 type ResponseFrame struct {
-	*Header
+	Header
 }
 
 // DataFrame type
 type DataFrame struct {
-	*Header
+	Header
 
 	Tor1         uint16
 	Tor1State    bool
@@ -129,7 +129,7 @@ func (p Payload) Parse() (UplinkFrame, error) {
 		return nil, fmt.Errorf("payload should have a size of 11 bytes, %s", p)
 	}
 	code := UplinkCode(p[0])
-	header := &Header{code: code, status: UplinkStatus(p[1])}
+	header := Header{code: code, status: UplinkStatus(p[1])}
 
 	switch UplinkCode(code) {
 	case Device:
@@ -148,27 +148,27 @@ func (p Payload) Parse() (UplinkFrame, error) {
 }
 
 // parseDevice func
-func parseDevice(header *Header, payload []byte) (DeviceFrame, error) {
+func parseDevice(header Header, payload []byte) (DeviceFrame, error) {
 	return DeviceFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseNetwork func
-func parseNetwork(header *Header, payload []byte) (NetworkFrame, error) {
+func parseNetwork(header Header, payload []byte) (NetworkFrame, error) {
 	return NetworkFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseKeepalive func
-func parseKeepalive(header *Header, payload []byte) (KeepaliveFrame, error) {
+func parseKeepalive(header Header, payload []byte) (KeepaliveFrame, error) {
 	return KeepaliveFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseResponse func
-func parseResponse(header *Header, payload []byte) (ResponseFrame, error) {
+func parseResponse(header Header, payload []byte) (ResponseFrame, error) {
 	return ResponseFrame{}, fmt.Errorf("not implemented")
 }
 
 // parseData func
-func parseData(header *Header, payload []byte) (DataFrame, error) {
+func parseData(header Header, payload []byte) (DataFrame, error) {
 	frame := DataFrame{Header: header}
 	var err error
 

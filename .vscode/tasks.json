@@ -34,7 +34,7 @@
         {
             "label": "go aws zip",
             "type": "shell",
-            "command": "zip_aws.bat",
+            "command": "build_zipaws.bat",
             "group": "build",
             "problemMatcher":[]
         }

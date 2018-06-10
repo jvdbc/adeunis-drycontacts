@@ -2,12 +2,33 @@ package main
 
 import (
 	"context"
-	"io"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
 	"testing"
 )
 
+func cleanEnv() {
+	os.Unsetenv(callbackHost)
+	os.Unsetenv(callbackPath)
+}
+
 func TestHandleRequest(t *testing.T) {
+	defer cleanEnv()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, client")
+	}))
+
+	defer ts.Close()
+
+	url, _ := url.Parse(ts.URL)
+
+	os.Setenv(callbackHost, url.Host)
+	os.Setenv(callbackPath, url.Path)
+
 	type args struct {
 		ctx    context.Context
 		sigfox sigfoxJSON
@@ -18,7 +39,7 @@ func TestHandleRequest(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{"1", args{context.WithValue(nil, "test", testPost{}), sigfoxJSON{
+		{"1", args{context.Background(), sigfoxJSON{
 			Time:      "2018-06-08T16:00:00.000Z",
 			Device:    "2D4114",
 			Duplicate: "false",
@@ -34,6 +55,7 @@ func TestHandleRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			got, err := HandleRequest(tt.args.ctx, tt.args.sigfox)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HandleRequest() error = %v, wantErr %v", err, tt.wantErr)
@@ -44,11 +66,4 @@ func TestHandleRequest(t *testing.T) {
 			}
 		})
 	}
-}
-
-type testPost struct {
-}
-
-func (t testPost) Post(url string, contentType string, body io.Reader) (resp *http.Response, err error) {
-	return &http.Response{}, nil
 }
